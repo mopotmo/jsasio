@@ -18,6 +18,21 @@ import javax.sound.sampled.spi.MixerProvider;
  * @author Manu Robledo
  */
 public class ASIOMixerProvider extends MixerProvider{
+	
+	
+	/** 
+	 * speed improvement
+	 * enables/disables fullCheck
+	 * useful for realtime use, if all parameters are safe!
+	 * 
+	 * must be enabled on inquiries to get full information!
+	 * 
+	 * @author Jurgen Schmitz - Aug. 2006
+	 */
+	private static boolean fullCheck = true;
+	
+
+	
 	/**
 	 * The pool of Mixers. Should guarantee that for each ASIO driver there
 	 * exists only one ASIOMixer instance 
@@ -68,7 +83,7 @@ public class ASIOMixerProvider extends MixerProvider{
 	/**
 	 * The version of the jsasio library version
 	 */
-	final static String LIB_VERSION = "1.0";
+	final static String LIB_VERSION = "1.1";
 	/**
 	 * The name of the jsasio library
 	 */
@@ -77,6 +92,15 @@ public class ASIOMixerProvider extends MixerProvider{
 	static{
 		freeAll();
 	}
+	
+	public static void setFullCheck(boolean fullCheck) {
+		ASIOMixerProvider.fullCheck = fullCheck;
+	}
+
+	public static boolean isFullCheck() {
+		return fullCheck;
+	}
+
 	/**
 	 * Get the full library name to be loaded
 	 * @return The library name consisting of LIB_NAME + "_" + LIB_VERSION
@@ -157,18 +181,24 @@ public class ASIOMixerProvider extends MixerProvider{
 		
 		for (int i = 0; i < drivers.length; i++) {
 			version = null;
+			
+			if(fullCheck) {
 			// Treiber muss geladen werden, um an die Version ranzukommen
-			asioDrivers.loadDriver(drivers[i]);
-			try {
-				// Version ermitteln
-				info = ASIOStaticFunctions.ASIOInit();
-				version = "" + info.driverVersion();
-				
-			} catch (ASIOError e) {
-				if(version == null)	version = "Unknown";
+				asioDrivers.loadDriver(drivers[i]);
+				try {
+					// Version ermitteln
+					info = ASIOStaticFunctions.ASIOInit();
+					version = "" + info.driverVersion();
+					
+				} catch (ASIOError e) {
+					if(version == null)	version = "Unknown";
+				}
+					infos[i] = new ASIOMixerInfo(drivers[i], version);
+					asioDrivers.removeCurrentDriver();
 			}
-			infos[i] = new ASIOMixerInfo(drivers[i], version);
-			asioDrivers.removeCurrentDriver();
+			else {
+				infos[i] = new ASIOMixerInfo(drivers[i], "Not Checked");
+			}
 		}
 		return infos;
 	}
@@ -177,6 +207,7 @@ public class ASIOMixerProvider extends MixerProvider{
 	 * 
 	 * @see javax.sound.sampled.spi.MixerProvider#getMixer(javax.sound.sampled.Mixer.Info)
 	 */
+	@SuppressWarnings("unchecked")
 	public Mixer getMixer(Info info) {
 		// Ist das überhaupt eine ASIOInfo?
 		ASIOMixerInfo i;
@@ -203,7 +234,7 @@ public class ASIOMixerProvider extends MixerProvider{
 	 * Get the last error message.
 	 * @return The last error message or an empty String if no error occured.
 	 */
-	static String getErrorMessage(){
+	public static String getErrorMessage(){
 		return errorMessage;
 	}
 
@@ -231,7 +262,7 @@ public class ASIOMixerProvider extends MixerProvider{
 		
 		// load ASIO driver
 		if(!asioDrivers.loadDriver(((ASIOMixerInfo)mixer.getMixerInfo()).getDriverName())){
-			errorMessage = "Unable to load ASIO Driver.";
+			errorMessage = "ASIOLoad: Unable to load ASIO Mixer Driver.";
 			return false;
 		}
 		
@@ -351,7 +382,8 @@ public class ASIOMixerProvider extends MixerProvider{
 	 * ASIOExit() will really be called, otherwise not
 	 */
 	static void ASIOExit(ASIOMixer mixer, long seq){
-		if(mixer == activeMixer && mixer != null && mixer.getStatus() >= ASIOMixer.LOADED && seq == initSeq) ASIOUnLoad(mixer);
+		if(mixer == activeMixer && mixer != null && mixer.getStatus() >= ASIOMixer.LOADED && seq == initSeq) 
+			ASIOUnLoad(mixer);
 	}
 	
 	/**
@@ -402,7 +434,7 @@ public class ASIOMixerProvider extends MixerProvider{
 	 * @param selector The selector to be supported
 	 * @return true if this selector is supported, false otherwise
 	 */
-	private boolean selectorSupported(int selector){
+	private static boolean selectorSupported(int selector){
 		if(selector == ASIOStaticFunctions.MESSAGE_SELECTOR_kAsioEngineVersion ||
 				selector == ASIOStaticFunctions.MESSAGE_SELECTOR_kAsioResetRequest ||
 				selector == ASIOStaticFunctions.MESSAGE_SELECTOR_kAsioSelectorSupported ||
@@ -413,34 +445,34 @@ public class ASIOMixerProvider extends MixerProvider{
 		else if(selector == ASIOStaticFunctions.MESSAGE_SELECTOR_kAsioResyncRequest) return resyncRequestSupported();
 		else return false;
 	}
-	private boolean bufferSizeChangedSupported(){
+	private static boolean bufferSizeChangedSupported(){
 		for (Iterator iter = asioListeners.iterator(); iter.hasNext();) {
 			ASIOListener listener = (ASIOListener) iter.next();
 			if(listener.supportsBufferSizeChange()) return true;
 		}
 		return false;
 	}
-	private boolean latenciesChangedSupported(){
+	private static boolean latenciesChangedSupported(){
 		for (Iterator iter = asioListeners.iterator(); iter.hasNext();) {
 			ASIOListener listener = (ASIOListener) iter.next();
 			if(listener.supportsLatenciesChanged()) return true;
 		}
 		return false;
 	}
-	private boolean resyncRequestSupported(){
+	private static boolean resyncRequestSupported(){
 		for (Iterator iter = asioListeners.iterator(); iter.hasNext();) {
 			ASIOListener listener = (ASIOListener) iter.next();
 			if(listener.supportsResyncRequest()) return true;
 		}
 		return false;
 	}
-	private void resetRequest(ASIOMixer mixer){
+	private static void resetRequest(ASIOMixer mixer){
 		for (Iterator iter = asioListeners.iterator(); iter.hasNext();) {
 			ASIOListener listener = (ASIOListener) iter.next();
 			listener.resetRequest(mixer);
 		}
 	}
-	private boolean bufferSizeChanged(int newSize){
+	private static boolean bufferSizeChanged(int newSize){
 		boolean accepted = false;
 		for (Iterator iter = asioListeners.iterator(); iter.hasNext();) {
 			ASIOListener listener = (ASIOListener) iter.next();
@@ -448,7 +480,7 @@ public class ASIOMixerProvider extends MixerProvider{
 		}
 		return accepted;
 	}
-	private boolean resyncRequest(){
+	private static boolean resyncRequest(){
 		boolean accepted = false;
 		for (Iterator iter = asioListeners.iterator(); iter.hasNext();) {
 			ASIOListener listener = (ASIOListener) iter.next();
@@ -456,7 +488,7 @@ public class ASIOMixerProvider extends MixerProvider{
 		}
 		return accepted;
 	}
-	private boolean latenciesChanged(){
+	private static boolean latenciesChanged(){
 		boolean accepted = false;
 		for (Iterator iter = asioListeners.iterator(); iter.hasNext();) {
 			ASIOListener listener = (ASIOListener) iter.next();
@@ -465,7 +497,8 @@ public class ASIOMixerProvider extends MixerProvider{
 		return accepted;
 	}
 	
-	private int asioMessage(int selector, int value){
+	@SuppressWarnings("unused")
+	private static int asioMessage(int selector, int value){
 		if(selector == ASIOStaticFunctions.MESSAGE_SELECTOR_kAsioSelectorSupported){
 			if(selectorSupported(value)) return 1;
 			else return 0;
@@ -498,6 +531,7 @@ public class ASIOMixerProvider extends MixerProvider{
 	 * ASIOMixer
 	 * @param listener The ASIOListener to be added
 	 */
+	@SuppressWarnings("unchecked")
 	public void addASIOListener(ASIOListener listener){
 		asioListeners.add(listener);
 	}
@@ -508,6 +542,7 @@ public class ASIOMixerProvider extends MixerProvider{
 	public void removeASIOListener(ASIOListener listener){
 		asioListeners.remove(listener);
 	}
+	@SuppressWarnings("unused")
 	private void jSampleRateDidChange(long pointer){
 		sampleRateDidChange(new ASIOSampleRate(pointer));
 	}
@@ -517,4 +552,5 @@ public class ASIOMixerProvider extends MixerProvider{
 			listener.sampleRateChanged(activeMixer, newRate.doubleValue());
 		}
 	}
+	
 }

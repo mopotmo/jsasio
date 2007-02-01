@@ -11,7 +11,11 @@ package com.groovemanager.spi.asio;
  * will be thrown
  * @author Manu Robledo
  */
-final class ASIOError extends Exception {
+public final class ASIOError extends Exception {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	/**
 	 * ASIOError constants
 	 */

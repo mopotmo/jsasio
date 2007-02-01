@@ -11,7 +11,7 @@ import java.nio.ByteBuffer;
  * This class provides wrapper methods for native ASIO functions
  * @author Manu Robledo
  */
-final class ASIOStaticFunctions {
+public final class ASIOStaticFunctions {
 	static{
 		System.loadLibrary(ASIOMixerProvider.getLibName());
 	}
@@ -295,7 +295,7 @@ final class ASIOStaticFunctions {
 	 * Wrapper for ASIOControlPanel()
 	 * @throws ASIOError If ASIOControlPanel() fails
 	 */
-	static void ASIOControlPanel() throws ASIOError{
+	public static void ASIOControlPanel() throws ASIOError{
 		int code = jASIOControlPanel();
 		ASIOError.throwASIOError(code);
 	}
@@ -309,6 +309,26 @@ final class ASIOStaticFunctions {
 	static void ASIOFuture(int selector, long pointer) throws ASIOError{
 		int code = jASIOFuture(selector, pointer);
 		ASIOError.throwASIOError(code);
+	}
+	
+	/**
+	 * Enable the time code reader if the hardware device supports time code.
+	 * See ASIO SDK...
+	 * 
+	 * @throws ASIOError If the hardware doesn´t support this feature
+	 */
+	public static void enableTimeCodeReader() throws ASIOError{
+		ASIOFuture((int)kAsioEnableTimeCodeRead(), 0);
+	}
+	
+	/**
+	 * Disable the time code reader if the hardware device supports time code.
+	 * See ASIO SDK...
+	 * 
+	 * @throws ASIOError If the hardware doesn´t support this feature
+	 */
+	public static void disableTimeCodeReader() throws ASIOError{
+		ASIOFuture((int)kAsioDisableTimeCodeRead(), 0);
 	}
 	
 	// native methods
@@ -330,8 +350,11 @@ final class ASIOStaticFunctions {
 	private static native int jASIOOutputReady();
 	private static native int jASIOControlPanel();
 	private static native int jASIOFuture(int selector, long pointer);
+	@SuppressWarnings("unused")
 	private static native long kAsioEnableTimeCodeRead();
+	@SuppressWarnings("unused")
 	private static native long kAsioDisableTimeCodeRead();
+	@SuppressWarnings("unused")
 	private static native long kAsioSetInputMonitor();
 	//private static native double jgetSystemTime();
 	private static native ByteBuffer createBuffer(long infoPointer, int index, int capacity);
@@ -356,7 +379,7 @@ final class ASIOStaticFunctions {
 	static ByteBuffer[] createBuffers(ASIOBufferInfo info, int asiobuffersize){
 		return new ByteBuffer[]{createBuffer(info.getPointer(), 0, asiobuffersize), createBuffer(info.getPointer(), 1, asiobuffersize)};
 	}
-
+	
 	/**
 	 * ASIO message selector for asioMessage() 
 	 */

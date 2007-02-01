@@ -40,7 +40,7 @@ public class ASIODataLine implements SourceDataLine, TargetDataLine {
 	/**
 	 * List of the registered LineListeners
 	 */
-	private ArrayList listeners = new ArrayList();
+	private ArrayList<LineListener> listeners = new ArrayList<LineListener>();
 	/**
 	 * The ASIOMixer instance which created this line
 	 */
@@ -208,8 +208,10 @@ public class ASIODataLine implements SourceDataLine, TargetDataLine {
 	public void open() throws LineUnavailableException {
 		if(open) return;
 		float rate;
-		if(format == null)rate = (float)mixer.getSampleRate();
-		else rate = format.getSampleRate();
+		if(format == null)
+			rate = (float)mixer.getSampleRate();
+		else 
+			rate = format.getSampleRate();
 		format = new ASIOAudioFormat(rate, info.getChannelInfo().type(), channels);
 		if(desiredBufferSize > 0) mixer.openLine(this, desiredBufferSize / format.getFrameSize());
 		else mixer.openLine(this);
@@ -276,7 +278,9 @@ public class ASIODataLine implements SourceDataLine, TargetDataLine {
 
 	public void open(AudioFormat format, int buffersize) throws LineUnavailableException {
 		if(open) return;
-		if(!info.isFormatSupported(format)) throw new LineUnavailableException("Audio Format not supported.");
+		if(ASIOMixerProvider.isFullCheck())
+			if(!info.isFormatSupported(format)) 
+				throw new LineUnavailableException("Audio Format not supported.");
 		
 		this.format = format;
 		channels = format.getChannels();
@@ -286,7 +290,9 @@ public class ASIODataLine implements SourceDataLine, TargetDataLine {
 
 	public void open(AudioFormat format) throws LineUnavailableException {
 		if(open) return;
-		if(!info.isFormatSupported(format)) throw new LineUnavailableException("Audio Format not supported.");
+		if(ASIOMixerProvider.isFullCheck())
+			if(!info.isFormatSupported(format)) 
+				throw new LineUnavailableException("Audio Format not supported.");
 		this.format = format;
 		channels = format.getChannels();
 		open();
@@ -449,5 +455,9 @@ public class ASIODataLine implements SourceDataLine, TargetDataLine {
 	public void finalize(){
 		started = false;
 		open = false;
+	}
+
+	public long getLongFramePosition() {
+		return mixer.getSamplePosition();
 	}
 }

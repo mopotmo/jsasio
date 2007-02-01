@@ -107,7 +107,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	/**
 	 * Variable for getMicrosecondPosition() and getSamplePosition()
 	 */
-	private long lastTime = -1, lastSample = -1, nanosSinceOpen = -1, samplesSinceOpen = -1, stopTime = -1, stopFrame = -1;
+	private long lastTime = -1, lastSample = -1, nanosSinceOpen = -1, samplesSinceOpen = -1/*, stopTime = -1, stopFrame = -1*/;
 	/**
 	 * buffersize
 	 */
@@ -181,20 +181,23 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 * create the lines that correspond to this Mixer. Should be called only
 	 * once for one Mixer
 	 */
-	private void createLines(){
+	@SuppressWarnings("unchecked")
+	private void createLines(boolean isInput){
 		if(allLines != null) return;
 		allLines = new HashMap();
 		
-		Line.Info[] infos = getSourceLineInfo();
-		for (int i = 0; i < infos.length; i++) {
-			ASIOLineInfo info = (ASIOLineInfo)infos[i]; 
-			allLines.put(info.getName() + info.getFirstChannel() + info.isInput(), new ASIODataLine(this, info));
-		}
-		
-		infos = getTargetLineInfo();
-		for (int i = 0; i < infos.length; i++) {
-			ASIOLineInfo info = (ASIOLineInfo)infos[i]; 
-			allLines.put(info.getName() + info.getFirstChannel() + info.isInput(), new ASIODataLine(this, info));
+		if(!isInput) {
+			Line.Info[] infos = getSourceLineInfo();
+			for (int i = 0; i < infos.length; i++) {
+				ASIOLineInfo info = (ASIOLineInfo)infos[i]; 
+				allLines.put(info.toString(), new ASIODataLine(this, info));
+			}
+		} else {
+			Line.Info[] infos = getTargetLineInfo();
+			for (int i = 0; i < infos.length; i++) {
+				ASIOLineInfo info = (ASIOLineInfo)infos[i]; 
+				allLines.put(info.toString(), new ASIODataLine(this, info));
+			}
 		}
 	}
 
@@ -340,7 +343,9 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 * @see javax.sound.sampled.Mixer#getSourceLineInfo()
 	 */
 	public Line.Info[] getSourceLineInfo() {
-		if(sourceInfo != null) return sourceInfo;
+		if(sourceInfo != null) 
+			return sourceInfo;
+		
 		long seq = 0;
 		try {
 			seq = ASIOInit();
@@ -412,7 +417,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 * @param cInfo The ASIOChannelInfo describing the channel
 	 * @return An Array of AudioFormats supported by this channel
 	 */
-	AudioFormat[] getAudioFormats(ASIOChannelInfo cInfo){
+	@SuppressWarnings("unchecked") AudioFormat[] getAudioFormats(ASIOChannelInfo cInfo){
 		final int type = cInfo.type();
 		ArrayList list = new ArrayList();
 		int possibleChannels;
@@ -461,7 +466,9 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 * @see javax.sound.sampled.Mixer#getTargetLineInfo()
 	 */
 	public Line.Info[] getTargetLineInfo() {
-		if(targetInfo != null) return targetInfo;
+		if(targetInfo != null) 
+			return targetInfo;
+		
 		long seq = 0;
 		try {
 			seq = ASIOInit();
@@ -558,6 +565,10 @@ public class ASIOMixer implements Mixer, ASIOListener{
 		if(!(info instanceof DataLine.Info)){
 			return false;
 		}
+		
+		if(!ASIOMixerProvider.isFullCheck())
+			return true;
+		
 		i = (DataLine.Info)info;
 		
 		Line.Info[] infos;
@@ -591,25 +602,41 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 * @see javax.sound.sampled.Mixer#getLine(javax.sound.sampled.Line.Info)
 	 */
 	public Line getLine(Line.Info info) throws LineUnavailableException {
-		if(!isLineSupported(info)) throw new LineUnavailableException("Line not supported.");
-		
-		if(allLines == null) createLines();
-		if(info instanceof ASIOLineInfo){
-			ASIOLineInfo asioInfo = (ASIOLineInfo)info;
-			if(allLines.containsKey(asioInfo.getName() + asioInfo.getFirstChannel() + asioInfo.isInput())) return (Line)allLines.get(asioInfo.getName() + asioInfo.getFirstChannel() + asioInfo.isInput());
-		}
+		if(!isLineSupported(info)) 
+			throw new LineUnavailableException("Line not supported.");
 
 		boolean isInput;
-		if(SourceDataLine.class.isAssignableFrom(info.getLineClass())) isInput = false;
-		else if(TargetDataLine.class.isAssignableFrom(info.getLineClass())) isInput = true;
-		else throw new LineUnavailableException("Line not supported.");
+		if(SourceDataLine.class.isAssignableFrom(info.getLineClass())) 
+			isInput = false;
+		else if(TargetDataLine.class.isAssignableFrom(info.getLineClass())) 
+			isInput = true;
+		else 
+			throw new LineUnavailableException("Line not supported.");
+
+		if(allLines == null) 
+			createLines(isInput);
+		
+		if(info instanceof ASIOLineInfo){
+			ASIOLineInfo asioInfo = (ASIOLineInfo)info;
+			if(allLines.containsKey(asioInfo.toString())) 
+				return (Line)allLines.get(asioInfo.toString());
+		}
+		
+		/*boolean isInput;
+		if(SourceDataLine.class.isAssignableFrom(info.getLineClass())) 
+			isInput = false;
+		else if(TargetDataLine.class.isAssignableFrom(info.getLineClass())) 
+			isInput = true;
+		else 
+			throw new LineUnavailableException("Line not supported.");*/
 
 		for (Iterator iter = allLines.keySet().iterator(); iter.hasNext();) {
-			ASIOLineInfo element = (ASIOLineInfo) iter.next();
-			if(element.getChannelInfo().isInput() == isInput){
+			ASIODataLine line = (ASIODataLine)allLines.get(iter.next());
+			ASIOLineInfo lineInfo = (ASIOLineInfo)line.getLineInfo();
+			if(lineInfo.getChannelInfo().isInput() == isInput){
 				AudioFormat[] formats = ((DataLine.Info)info).getFormats();
 				for (int i = 0; i < formats.length; i++) {
-					if(element.isFormatSupported(formats[i])) return (Line)allLines.get(element);
+					if(lineInfo.isFormatSupported(formats[i])) return line;
 				}
 			}
 		}
@@ -635,7 +662,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 		
 		for (int i = 0; i < infos.length; i++) {
 			ASIOLineInfo info = (ASIOLineInfo)infos[i];
-			result[i] = (Line)allLines.get(info.getName() + info.getFirstChannel() + info.isInput());
+			result[i] = (Line)allLines.get(info.toString());
 		}
 		return result;
 	}
@@ -650,7 +677,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 		
 		for (int i = 0; i < infos.length; i++) {
 			ASIOLineInfo info = (ASIOLineInfo)infos[i];
-			result[i] = (Line)allLines.get(info.getName() + info.getFirstChannel() + info.isInput());
+			result[i] = (Line)allLines.get(info.toString());
 		}
 		return result;
 	}
@@ -664,6 +691,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 * 
 	 * @see javax.sound.sampled.Mixer#synchronize(javax.sound.sampled.Line[], boolean)
 	 */
+	@SuppressWarnings("unchecked")
 	public void synchronize(Line[] lines, boolean maintainSync) {
 		if(!isSynchronizationSupported(lines, maintainSync)) return;
 		for (int i = 0; i < lines.length; i++) {
@@ -686,6 +714,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 * @return The number of input channels or 0 if the ASIO driver can not be
 	 * initialized
 	 */
+	@SuppressWarnings("unused")
 	private int getMaxInChannels(){
 		try {
 			long seq = ASIOInit();
@@ -702,6 +731,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 * @return The number of input channels or 0 if the ASIO driver can not be
 	 * initialized
 	 */
+	@SuppressWarnings("unused")
 	private int getMaxOutChannels(){
 		try {
 			long seq = ASIOInit();
@@ -762,8 +792,8 @@ public class ASIOMixer implements Mixer, ASIOListener{
 		ASIOExit(seq);
 		if(activeLines != null) for (int i = 0; i < activeLines.length; i++) {
 			activeLines[i].closed();
-			activeLines = null;
 		}
+		activeLines = null;
 	}
 
 	/**
@@ -802,6 +832,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 * 
 	 * @see javax.sound.sampled.Line#addLineListener(javax.sound.sampled.LineListener)
 	 */
+	@SuppressWarnings("unchecked")
 	public void addLineListener(LineListener listener) {
 		listeners.add(listener);
 	}
@@ -867,11 +898,23 @@ public class ASIOMixer implements Mixer, ASIOListener{
 		if(linesToSync.contains(line)){
 			lines = new ASIODataLine[linesToSync.size()];
 			int i = 0;
-			for (Iterator iter = linesToSync.iterator(); iter.hasNext(); i++) {
+			if(ASIOMixerProvider.isFullCheck()){
+				for (Iterator iter = linesToSync.iterator(); iter.hasNext(); i++) {
+					lines[i] = (ASIODataLine) iter.next();
+					if(!((DataLine.Info)lines[i].getLineInfo()).isFormatSupported(lines[i].getFormat())) throw new LineUnavailableException("Format " + lines[i].getFormat() + " not supported.");
+				}
+			}
+			else for (Iterator iter = linesToSync.iterator(); iter.hasNext(); i++) {
 				lines[i] = (ASIODataLine) iter.next();
 			}
 		}
-		else lines = new ASIODataLine[]{line};
+		else{
+			if(ASIOMixerProvider.isFullCheck()){
+				DataLine.Info info = (DataLine.Info)line.getLineInfo();
+				if(!info.isFormatSupported(line.getFormat())) throw new LineUnavailableException("Format " + line.getFormat() + " not supported.");
+			}
+			lines = new ASIODataLine[]{line};
+		}
 		
 		prepare(lines, buffersize / 2);
 	}
@@ -933,12 +976,19 @@ public class ASIOMixer implements Mixer, ASIOListener{
 		}
 
 		try {
-			int min = getMinBufferSize();
-			int max = getMaxBufferSize();
-			int gran = getBufferSizeGranularity();
-			buffersize = Math.max(buffersize, min);
-			buffersize = Math.min(buffersize, max);
-			buffersize -= buffersize % gran;
+			if(ASIOMixerProvider.isFullCheck())
+			{
+				int min = getMinBufferSize();
+				int max = getMaxBufferSize();
+				int gran = getBufferSizeGranularity();
+				buffersize = Math.max(buffersize, min);
+				buffersize = Math.min(buffersize, max);
+				buffersize -= buffersize % gran;
+			}
+			else {
+				int gran = 32;
+				buffersize -= buffersize % gran;
+			}
 			
 			long seq = 0;
 			seq = ASIOPrepare(infos, buffersize);
@@ -1026,7 +1076,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 */
 	void jBufferSwitchTimeInfo(long asioTime, int index, boolean directProcess){
 		Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
-		ASIOTime time = new ASIOTime(asioTime);
+		ASIOTime time = null; //new ASIOTime(asioTime);
 		bufferSwitchTimeInfo(time, index, directProcess, false);
 	}
 	
@@ -1048,7 +1098,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 			return;
 		}
 		
-		if(!internal){
+		if(!internal && time != null){
 			long t;
 			if ((time.timeInfo.flags() & AsioTimeInfo.FLAG_kSystemTimeValid) > 0) {
 				t = ASIOStaticFunctions.getSystemTime();
@@ -1140,6 +1190,7 @@ public class ASIOMixer implements Mixer, ASIOListener{
 	 * ASIO driver
 	 * @param listener The ASIOlistener to be added
 	 */
+	@SuppressWarnings("unchecked")
 	public void addASIOListener(ASIOListener listener){
 		asioListeners.add(listener);
 	}

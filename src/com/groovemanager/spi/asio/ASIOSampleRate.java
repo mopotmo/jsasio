@@ -52,6 +52,7 @@ final class ASIOSampleRate extends NativeClass {
 	 * @param buffer The DirectByteBuffer created in native code
 	 * @return The double value
 	 */
+	@SuppressWarnings("unused")
 	private static double convertToDouble(ByteBuffer buffer){
 		return buffer.getDouble();
 	}
@@ -60,6 +61,7 @@ final class ASIOSampleRate extends NativeClass {
 	 * @param buffer The buffer to copy the value to
 	 * @param value The double value to be converted
 	 */
+	@SuppressWarnings("unused")
 	private static void convertBack(ByteBuffer buffer, double value){
 		buffer.putDouble(value);
 	}

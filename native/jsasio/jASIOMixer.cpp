@@ -35,7 +35,7 @@ long cb_asioMessage(long selector, long value, void* message, double* opt){
 	JNIEnv* env;
 	asioJVM->AttachCurrentThread((void**)&env, NULL);
 	jclass provider = env->FindClass("com/groovemanager/spi/asio/ASIOMixerProvider");
-	jmethodID jmidAM = env->GetStaticMethodID(provider, "asioMessage", "(I)II");
+	jmethodID jmidAM = env->GetStaticMethodID(provider, "asioMessage", "(II)I");
 	long result = env->CallStaticIntMethod(provider, jmidAM, selector, value);
 	asioJVM->DetachCurrentThread();
 	return result;

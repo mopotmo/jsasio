@@ -90,6 +90,6 @@ class ASIOLineInfo extends DataLine.Info {
 		return getChannelInfo().name();
 	}
 	public String toString() {
-		return getName() + ": " + super.toString();
+		return getName() + ": " + getFirstChannel() + " (" + (isInput() ? "Input)" : "Output)");
 	}
 }
