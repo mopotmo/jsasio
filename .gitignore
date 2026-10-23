@@ -1,0 +1,9 @@
+*.class
+.DS_Store
+*.dll
+*.obj
+*.pdb
+*.ilk
+*.suo
+Debug/
+Release/
