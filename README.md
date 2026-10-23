@@ -33,7 +33,7 @@ java -Djava.library.path=. -cp jsasio.jar com.groovemanager.spi.asio.TestASIO --
 
 ## Building the native library
 
-The project expects the [Steinberg ASIO SDK](https://www.steinberg.net/developers/) in `native/jsasio` as `common/`, `host/` and `host/pc/`. The 2004/2007 builds used ASIO SDK 2.0. Those files are not part of this repository. The include path for the JDK headers is hard-coded in `jsasio.vcproj` (`C:\Programme\Java\jdk1.6.0\include`). Rename the resulting `jsasio.dll` to `jsasio_<LIB_VERSION>.dll` (see `ASIOMixerProvider.LIB_VERSION`).
+The ASIO SDK files the project needs are included in `native/jsasio/common`, `host` and `host/pc`. They come from the [Steinberg ASIO SDK](https://www.steinberg.net/developers/) 2.3.4: `common/` is under Steinberg's dual license, used here under GPLv3 (see `common/LICENSE.txt`), and `host/` is under the BSD-style license in each file's header. The original 2004/2007 builds used ASIO SDK 2.0, which can't be redistributed. Building against 2.3.4 hasn't been tested yet. The include path for the JDK headers is hard-coded in `jsasio.vcproj` (`C:\Programme\Java\jdk1.6.0\include`). Rename the resulting `jsasio.dll` to `jsasio_<LIB_VERSION>.dll` (see `ASIOMixerProvider.LIB_VERSION`).
 
 ## History
 
